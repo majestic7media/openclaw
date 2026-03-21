@@ -103,6 +103,7 @@ package-lock.json
 .claude/
 .agent/
 skills-lock.json
+python-clients/
 
 # Local iOS signing overrides
 apps/ios/LocalSigning.xcconfig
