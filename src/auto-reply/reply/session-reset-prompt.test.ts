@@ -7,6 +7,7 @@ describe("buildBareSessionResetPrompt", () => {
     const prompt = buildBareSessionResetPrompt();
     expect(prompt).toContain("Run your Session Startup sequence");
     expect(prompt).toContain("read the required files before responding to the user");
+    expect(prompt).toContain("Avoid generic openers like 'what's on your mind?'");
   });
 
   it("appends current time line so agents know the date", () => {

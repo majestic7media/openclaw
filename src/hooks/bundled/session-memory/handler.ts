@@ -12,6 +12,7 @@ import {
   resolveAgentIdByWorkspacePath,
   resolveAgentWorkspaceDir,
 } from "../../../agents/agent-scope.js";
+import { stripInboundMetadata } from "../../../auto-reply/reply/strip-inbound-meta.js";
 import type { OpenClawConfig } from "../../../config/config.js";
 import { resolveStateDir } from "../../../config/paths.js";
 import { writeFileWithinRoot } from "../../../infra/fs-safe.js";
@@ -21,12 +22,29 @@ import {
   resolveAgentIdFromSessionKey,
   toAgentStoreSessionKey,
 } from "../../../routing/session-key.js";
+import {
+  stripAssistantInternalScaffolding,
+  stripRelevantMemoriesScaffolding,
+} from "../../../shared/text/assistant-visible-text.js";
 import { hasInterSessionUserProvenance } from "../../../sessions/input-provenance.js";
 import { resolveHookConfig } from "../../config.js";
 import type { HookHandler } from "../../hooks.js";
 import { generateSlugViaLLM } from "../../llm-slug-generator.js";
 
 const log = createSubsystemLogger("hooks/session-memory");
+const SESSION_RESET_PROMPT_SENTINEL = "A new session was started via /new or /reset.";
+
+function sanitizeSessionMemoryText(role: string, text: string): string {
+  const stripped =
+    role === "assistant"
+      ? stripAssistantInternalScaffolding(text)
+      : stripRelevantMemoriesScaffolding(stripInboundMetadata(text)).trim();
+  const trimmed = stripped.trim();
+  if (trimmed.startsWith(SESSION_RESET_PROMPT_SENTINEL)) {
+    return "";
+  }
+  return role === "assistant" ? stripped.trim() : trimmed;
+}
 
 function resolveDisplaySessionKey(params: {
   cfg?: OpenClawConfig;
@@ -76,8 +94,10 @@ async function getRecentSessionContent(
               ? // oxlint-disable-next-line typescript/no-explicit-any
                 msg.content.find((c: any) => c.type === "text")?.text
               : msg.content;
-            if (text && !text.startsWith("/")) {
-              allMessages.push(`${role}: ${text}`);
+            const sanitizedText =
+              typeof text === "string" ? sanitizeSessionMemoryText(role, text) : "";
+            if (sanitizedText && !sanitizedText.startsWith("/")) {
+              allMessages.push(`${role}: ${sanitizedText}`);
             }
           }
         }

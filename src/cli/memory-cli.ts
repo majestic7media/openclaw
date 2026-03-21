@@ -51,11 +51,12 @@ type LoadedMemoryCommandConfig = {
   diagnostics: string[];
 };
 
-async function loadMemoryCommandConfig(commandName: string): Promise<LoadedMemoryCommandConfig> {
+async function loadMemoryCommandConfig(commandName: string, mode: CommandSecretResolutionModeInput = "read_only_status"): Promise<LoadedMemoryCommandConfig> {
   const { resolvedConfig, diagnostics } = await resolveCommandSecretRefsViaGateway({
     config: loadConfig(),
     commandName,
     targetIds: getMemoryCommandSecretTargetIds(),
+    mode,
   });
   return {
     config: resolvedConfig,

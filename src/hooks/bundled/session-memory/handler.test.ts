@@ -335,6 +335,42 @@ describe("session-memory hook", () => {
     expect(memoryContent).toContain("user: External follow-up");
   });
 
+  it("sanitizes inbound metadata and internal scaffolding before saving memory", async () => {
+    const contaminatedUser = [
+      "Sender (untrusted metadata):",
+      "```json",
+      JSON.stringify({ label: "openclaw-control-ui" }),
+      "```",
+      "",
+      "<relevant-memories>",
+      "Leaked memory block",
+      "</relevant-memories>",
+      "",
+      "Actual user prompt",
+    ].join("\n");
+    const contaminatedAssistant = [
+      "<relevant-memories>",
+      "Internal memory block",
+      "</relevant-memories>",
+      "<think>private chain-of-thought</think>",
+      "Visible assistant answer",
+    ].join("\n");
+
+    const sessionContent = createMockSessionContent([
+      { role: "user", content: contaminatedUser },
+      { role: "assistant", content: contaminatedAssistant },
+    ]);
+    const { memoryContent } = await runNewWithPreviousSession({ sessionContent });
+
+    expect(memoryContent).toContain("user: Actual user prompt");
+    expect(memoryContent).toContain("assistant: Visible assistant answer");
+    expect(memoryContent).not.toContain("Sender (untrusted metadata):");
+    expect(memoryContent).not.toContain("openclaw-control-ui");
+    expect(memoryContent).not.toContain("Leaked memory block");
+    expect(memoryContent).not.toContain("Internal memory block");
+    expect(memoryContent).not.toContain("private chain-of-thought");
+  });
+
   it("filters out command messages starting with /", async () => {
     const sessionContent = createMockSessionContent([
       { role: "user", content: "/help" },
@@ -426,6 +462,41 @@ describe("session-memory hook", () => {
 
     expect(memoryContent).toContain("user: Message from rotated transcript");
     expect(memoryContent).toContain("assistant: Recovered from reset fallback");
+  });
+
+  it("drops leaked /new reset scaffolding when loading from reset fallback", async () => {
+    const { tempDir, sessionsDir, activeSessionFile } = await createSessionMemoryWorkspace({
+      activeSession: { name: "test-session.jsonl", content: "" },
+    });
+
+    const resetPromptLeak = [
+      "A new session was started via /new or /reset. Run your Session Startup sequence - read the required files before responding to the user.",
+      "Current time: Friday, March 20th, 2026 - 9:58 PM (America/New_York) / 2026-03-21 01:58 UTC",
+    ].join("\n");
+    const resetContent = createMockSessionContent([
+      { role: "user", content: resetPromptLeak },
+      { role: "user", content: "How are things running and going?" },
+      { role: "assistant", content: "Diagnostics follow." },
+    ]);
+    await writeWorkspaceFile({
+      dir: sessionsDir,
+      name: "test-session.jsonl.reset.2026-03-21T01-58-33.070Z",
+      content: resetContent,
+    });
+
+    const { memoryContent } = await runNewWithPreviousSessionEntry({
+      tempDir,
+      previousSessionEntry: {
+        sessionId: "test-123",
+        sessionFile: activeSessionFile!,
+      },
+    });
+
+    expect(memoryContent).toContain("user: How are things running and going?");
+    expect(memoryContent).toContain("assistant: Diagnostics follow.");
+    expect(memoryContent).not.toContain("A new session was started via /new or /reset.");
+    expect(memoryContent).not.toContain("Run your Session Startup sequence");
+    expect(memoryContent).not.toContain("Current time:");
   });
 
   it("handles reset-path session pointers from previousSessionEntry", async () => {

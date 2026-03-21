@@ -7,7 +7,9 @@ import { withProgress } from "../cli/progress.js";
 import type { OpenClawConfig } from "../config/config.js";
 import { loadConfig, readBestEffortConfig } from "../config/config.js";
 import { loadSessionStore, resolveStorePath } from "../config/sessions.js";
-import { buildGatewayConnectionDetails, callGateway } from "../gateway/call.js";
+import { buildGatewayConnectionDetails } from "../gateway/call.js";
+import { resolveGatewayProbeAuthSafe } from "../gateway/probe-auth.js";
+import { probeGateway } from "../gateway/probe.js";
 import { info } from "../globals.js";
 import { isTruthyEnvValue } from "../infra/env.js";
 import { formatErrorMessage } from "../infra/errors.js";
@@ -599,21 +601,31 @@ export async function healthCommand(
   runtime: RuntimeEnv,
 ) {
   const cfg = opts.config ?? (await readBestEffortConfig());
-  // Always query the running gateway; do not open a direct Baileys socket here.
-  const summary = await withProgress(
+  const gatewayMode = cfg.gateway?.mode === "remote" ? "remote" : "local";
+  const gatewayProbeAuth = resolveGatewayProbeAuthSafe({
+    cfg,
+    mode: gatewayMode,
+    env: process.env,
+  });
+  const gatewayConnection = buildGatewayConnectionDetails({ config: cfg });
+  const summaryProbe = await withProgress(
     {
       label: "Checking gateway health…",
       indeterminate: true,
       enabled: opts.json !== true,
     },
     async () =>
-      await callGateway<HealthSummary>({
-        method: "health",
-        params: opts.verbose ? { probe: true } : undefined,
-        timeoutMs: opts.timeoutMs,
-        config: cfg,
+      await probeGateway({
+        url: gatewayConnection.url,
+        auth: gatewayProbeAuth.auth,
+        timeoutMs: opts.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+        detailLevel: "full",
       }),
   );
+  if (!summaryProbe.ok || !summaryProbe.health) {
+    throw new Error(summaryProbe.error ?? "gateway health probe failed");
+  }
+  const summary = summaryProbe.health as HealthSummary;
   // Gateway reachability defines success; channel issues are reported but not fatal here.
   const fatal = false;
 
@@ -623,9 +635,8 @@ export async function healthCommand(
     const debugEnabled = isTruthyEnvValue(process.env.OPENCLAW_DEBUG_HEALTH);
     const rich = isRich();
     if (opts.verbose) {
-      const details = buildGatewayConnectionDetails({ config: cfg });
       runtime.log(info("Gateway connection:"));
-      for (const line of details.message.split("\n")) {
+      for (const line of gatewayConnection.message.split("\n")) {
         runtime.log(`  ${line}`);
       }
     }

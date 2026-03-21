@@ -1,10 +1,9 @@
 import { formatCliCommand } from "../cli/command-format.js";
 import { withProgress } from "../cli/progress.js";
 import { resolveGatewayPort } from "../config/config.js";
-import { buildGatewayConnectionDetails, callGateway } from "../gateway/call.js";
+import { buildGatewayConnectionDetails } from "../gateway/call.js";
 import { info } from "../globals.js";
 import { formatTimeAgo } from "../infra/format-time/format-relative.ts";
-import type { HeartbeatEventPayload } from "../infra/heartbeat-events.js";
 import { normalizeUpdateChannel, resolveUpdateChannelDisplay } from "../infra/update-channels.js";
 import { formatGitInstallLabel } from "../infra/update-check.js";
 import {
@@ -96,7 +95,7 @@ export async function statusCommand(
   }
 
   const scan = await scanStatus(
-    { json: opts.json, timeoutMs: opts.timeoutMs, all: opts.all },
+    { json: opts.json, timeoutMs: opts.timeoutMs, all: opts.all, deep: opts.deep },
     runtime,
   );
   const runSecurityAudit = async () =>
@@ -158,30 +157,9 @@ export async function statusCommand(
       )
     : undefined;
   const health: HealthSummary | undefined = opts.deep
-    ? await withProgress(
-        {
-          label: "Checking gateway health…",
-          indeterminate: true,
-          enabled: opts.json !== true,
-        },
-        async () =>
-          await callGateway<HealthSummary>({
-            method: "health",
-            params: { probe: true },
-            timeoutMs: opts.timeoutMs,
-            config: scan.cfg,
-          }),
-      )
+    ? (gatewayProbe?.health as HealthSummary | undefined) ?? undefined
     : undefined;
-  const lastHeartbeat =
-    opts.deep && gatewayReachable
-      ? await callGateway<HeartbeatEventPayload | null>({
-          method: "last-heartbeat",
-          params: {},
-          timeoutMs: opts.timeoutMs,
-          config: scan.cfg,
-        }).catch(() => null)
-      : null;
+  const lastHeartbeat = null;
 
   const configChannel = normalizeUpdateChannel(cfg.update?.channel);
   const channelInfo = resolveUpdateChannelDisplay({

@@ -58,7 +58,7 @@ export function resolveMemoryPluginStatus(cfg: OpenClawConfig): MemoryPluginStat
 
 export async function resolveGatewayProbeSnapshot(params: {
   cfg: OpenClawConfig;
-  opts: { timeoutMs?: number; all?: boolean };
+  opts: { timeoutMs?: number; all?: boolean; deep?: boolean };
 }): Promise<GatewayProbeSnapshot> {
   const gatewayConnection = buildGatewayConnectionDetails({ config: params.cfg });
   const isRemoteMode = params.cfg.gateway?.mode === "remote";
