@@ -91,13 +91,17 @@ function buildColdStartUpdateResult(): Awaited<ReturnType<typeof getUpdateCheckR
 async function resolveChannelsStatus(params: {
   cfg: OpenClawConfig;
   gatewayReachable: boolean;
-  gatewayProbeAuth: {
+  gatewayProbeAuth?: {
     token?: string;
     password?: string;
   };
   opts: { timeoutMs?: number; all?: boolean };
 }) {
   if (!params.gatewayReachable || !params.opts.all) {
+    return null;
+  }
+  const gatewayProbeAuth = params.gatewayProbeAuth;
+  if (!gatewayProbeAuth?.token && !gatewayProbeAuth?.password) {
     return null;
   }
   return await callGateway({
@@ -108,8 +112,8 @@ async function resolveChannelsStatus(params: {
       timeoutMs: Math.min(8000, params.opts.timeoutMs ?? 10_000),
     },
     timeoutMs: Math.min(params.opts.all ? 5000 : 2500, params.opts.timeoutMs ?? 10_000),
-    token: params.gatewayProbeAuth.token,
-    password: params.gatewayProbeAuth.password,
+    token: gatewayProbeAuth.token,
+    password: gatewayProbeAuth.password,
     clientName: "openclaw-probe",
     mode: GATEWAY_CLIENT_MODES.PROBE,
   }).catch(() => null);
@@ -232,7 +236,7 @@ async function scanStatusJsonFast(opts: {
     gatewayProbeAuthWarning,
     gatewayProbe,
   } = gatewaySnapshot;
-  const gatewayReachable = gatewayProbe?.ok === true;
+  const gatewayReachable = gatewayProbe?.ok === true || gatewayProbe?.connectLatencyMs != null;
   const gatewaySelf = gatewayProbe?.presence
     ? pickGatewaySelfPresence(gatewayProbe.presence)
     : null;
@@ -361,7 +365,7 @@ export async function scanStatus(
           ...(skipColdStartNetworkChecks ? { skipProbe: true } : {}),
         },
       });
-      const gatewayReachable = gatewayProbe?.ok === true;
+      const gatewayReachable = gatewayProbe?.ok === true || gatewayProbe?.connectLatencyMs != null;
       const gatewaySelf = gatewayProbe?.presence
         ? pickGatewaySelfPresence(gatewayProbe.presence)
         : null;

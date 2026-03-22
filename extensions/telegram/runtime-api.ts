@@ -7,7 +7,7 @@ export type {
   TelegramAccountConfig,
   TelegramActionConfig,
   TelegramNetworkConfig,
-} from "../../src/plugin-sdk/telegram.js";
+} from "../../dist/plugin-sdk/telegram.js";
 export type {
   OpenClawPluginService,
   OpenClawPluginServiceContext,
@@ -37,7 +37,7 @@ export {
   projectCredentialSnapshotFields,
   resolveConfiguredFromCredentialStatuses,
   resolveTelegramPollVisibility,
-} from "../../src/plugin-sdk/telegram.js";
+} from "../../dist/plugin-sdk/telegram.js";
 export {
   buildChannelConfigSchema,
   getChatChannelMeta,
@@ -49,7 +49,7 @@ export {
   readStringParam,
   resolvePollMaxSelections,
   TelegramConfigSchema,
-} from "../../src/plugin-sdk/telegram-core.js";
+} from "../../dist/plugin-sdk/telegram.js";
 export type { TelegramProbe } from "./src/probe.js";
 export { auditTelegramGroupMembership, collectTelegramUnmentionedGroupIds } from "./src/audit.js";
 export { telegramMessageActions } from "./src/channel-actions.js";

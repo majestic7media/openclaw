@@ -1,5 +1,4 @@
 import type { DaemonInstallOptions } from "./types.js";
-import type { DaemonInstallOptions } from "./types.js";
 import { resolveNodeStartupTlsEnvironment } from "../../bootstrap/node-startup-env.js";
 import { buildGatewayInstallPlan } from "../../commands/daemon-install-helpers.js";
 import {
