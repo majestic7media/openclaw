@@ -180,6 +180,61 @@ describe("scanStatus", () => {
     );
   });
 
+  it("treats a connected gateway as reachable even if detail RPCs time out", async () => {
+    mocks.resolveConfigPath.mockReturnValueOnce("B:\\Github\\openclaw\\package.json");
+    mocks.readBestEffortConfig.mockResolvedValue({
+      session: {},
+      plugins: { enabled: false },
+      gateway: {},
+    });
+    mocks.resolveCommandSecretRefsViaGateway.mockResolvedValue({
+      resolvedConfig: {
+        session: {},
+        plugins: { enabled: false },
+        gateway: {},
+      },
+      diagnostics: [],
+    });
+    mocks.getUpdateCheckResult.mockResolvedValue({
+      installKind: "git",
+      git: null,
+      registry: null,
+    });
+    mocks.getAgentLocalStatuses.mockResolvedValue({
+      defaultId: "main",
+      agents: [],
+    });
+    mocks.getStatusSummary.mockResolvedValue({
+      linkChannel: undefined,
+      sessions: { count: 0, paths: [], defaults: {}, recent: [] },
+    });
+    mocks.buildGatewayConnectionDetails.mockReturnValue({
+      url: "ws://127.0.0.1:18789",
+      urlSource: "default",
+    });
+    mocks.resolveGatewayProbeAuthResolution.mockReturnValue({
+      auth: {},
+      warning: undefined,
+    });
+    mocks.probeGateway.mockResolvedValue({
+      ok: false,
+      url: "ws://127.0.0.1:18789",
+      connectLatencyMs: 587,
+      error: "timeout",
+      close: null,
+      health: null,
+      status: null,
+      presence: null,
+      configSnapshot: null,
+    });
+
+    const result = await scanStatus({ json: true }, {} as never);
+
+    expect(result.gatewayReachable).toBe(true);
+    expect(result.gatewayProbe?.connectLatencyMs).toBe(587);
+    expect(result.gatewayProbe?.error).toBe("timeout");
+  });
+
   it("skips channel plugin preload for status --json with no channel config", async () => {
     mocks.readBestEffortConfig.mockResolvedValue({
       session: {},
@@ -640,3 +695,4 @@ describe("scanStatus", () => {
     });
   });
 });
+

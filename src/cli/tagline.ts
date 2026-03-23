@@ -39,7 +39,7 @@ const TAGLINES: string[] = [
   "I don't judge, but your missing API keys are absolutely judging you.",
   "I can grep it, git blame it, and gently roast it—pick your coping mechanism.",
   "Hot reload for config, cold sweat for deploys.",
-  "I'm the assistant your terminal demanded, not the one your sleep schedule requested.",
+  "I'm Celeste, and I'll keep the work moving without making you repeat yourself.",
   "I keep secrets like a vault... unless you print them in debug logs again.",
   "Automation with claws: minimal fuss, maximal pinch.",
   "I'm basically a Swiss Army knife, but with more opinions and fewer sharp edges.",

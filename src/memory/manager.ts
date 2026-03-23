@@ -270,7 +270,9 @@ export class MemoryIndexManager extends MemoryManagerEmbeddingOps implements Mem
       this.ensureSessionListener();
       this.ensureIntervalSync();
     }
-    this.dirty = this.sources.has("memory") && (statusOnly ? !meta : true);
+    // Status snapshots are read-only reports; don't surface empty placeholder workspaces as dirty.
+    // Live managers still start dirty so they will sync on the normal runtime path.
+    this.dirty = this.sources.has("memory") && !statusOnly;
     this.batch = this.resolveBatchConfig();
   }
 

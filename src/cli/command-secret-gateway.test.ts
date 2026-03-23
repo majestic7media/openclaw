@@ -12,7 +12,7 @@ vi.mock("../secrets/runtime-web-tools.js", () => ({
 }));
 
 vi.mock("../utils/message-channel.js", () => ({
-  GATEWAY_CLIENT_MODES: { CLI: "cli" },
+  GATEWAY_CLIENT_MODES: { CLI: "cli", PROBE: "probe" },
   GATEWAY_CLIENT_NAMES: { CLI: "cli" },
 }));
 

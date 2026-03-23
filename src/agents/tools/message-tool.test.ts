@@ -43,6 +43,10 @@ const mocks = vi.hoisted(() => ({
   })),
 }));
 
+vi.mock("@anthropic-ai/vertex-sdk", () => ({
+  AnthropicVertex: class AnthropicVertex {},
+}));
+
 vi.mock("../../infra/outbound/message-action-runner.js", async () => {
   const actual = await vi.importActual<
     typeof import("../../infra/outbound/message-action-runner.js")
@@ -809,5 +813,26 @@ describe("message tool sandbox passthrough", () => {
     });
 
     expect(call?.requesterSenderId).toBe("1234567890");
+  });
+
+  it("uses agentTo as a fallback currentChannelId", async () => {
+    mockSendResult({ channel: "telegram", to: "telegram:123" });
+
+    const tool = createMessageTool({
+      config: {} as never,
+      agentTo: "channel:parent-channel",
+    });
+
+    await tool.execute("1", {
+      action: "send",
+      message: "hi",
+    });
+
+    const call = mocks.runMessageAction.mock.calls[0]?.[0] as
+      | {
+          toolContext?: { currentChannelId?: string };
+        }
+      | undefined;
+    expect(call?.toolContext?.currentChannelId).toBe("channel:parent-channel");
   });
 });

@@ -1,4 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@anthropic-ai/vertex-sdk", () => ({
+  AnthropicVertex: vi.fn(function MockAnthropicVertex() {
+    return {};
+  }),
+}));
 import { buildReplyPayloads } from "./agent-runner-payloads.js";
 
 const baseParams = {
@@ -163,7 +169,7 @@ describe("buildReplyPayloads media filter integration", () => {
     await expectSameTargetRepliesSuppressed({ provider: "lark", to: "ou_abc123" });
   });
 
-  it("drops all final payloads when block pipeline streamed successfully", async () => {
+  it("keeps final payloads when block pipeline streamed but did not send a matching payload", async () => {
     const pipeline: Parameters<typeof buildReplyPayloads>[0]["blockReplyPipeline"] = {
       didStream: () => true,
       isAborted: () => false,
@@ -173,8 +179,6 @@ describe("buildReplyPayloads media filter integration", () => {
       stop: () => {},
       hasBuffered: () => false,
     };
-    // shouldDropFinalPayloads short-circuits to [] when the pipeline streamed
-    // without aborting, so hasSentPayload is never reached.
     const { replyPayloads } = await buildReplyPayloads({
       ...baseParams,
       blockStreamingEnabled: true,
@@ -183,7 +187,8 @@ describe("buildReplyPayloads media filter integration", () => {
       payloads: [{ text: "response", replyToId: "post-123" }],
     });
 
-    expect(replyPayloads).toHaveLength(0);
+    expect(replyPayloads).toHaveLength(1);
+    expect(replyPayloads[0]?.text).toBe("response");
   });
 
   it("deduplicates final payloads against directly sent block keys regardless of replyToId", async () => {

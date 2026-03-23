@@ -11,3 +11,9 @@ vi.mock("chokidar", () => ({
 vi.mock("./sqlite-vec.js", () => ({
   loadSqliteVecExtension: async () => ({ ok: false, error: "sqlite-vec disabled in tests" }),
 }));
+
+vi.mock("@anthropic-ai/vertex-sdk", () => ({
+  AnthropicVertex: vi.fn(function MockAnthropicVertex(options: unknown) {
+    return { options };
+  }),
+}));
