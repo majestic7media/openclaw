@@ -136,7 +136,7 @@ export async function statusAllCommand(
       auth: probeAuth,
       timeoutMs: Math.min(5000, opts?.timeoutMs ?? 10_000),
     }).catch(() => null);
-    const gatewayReachable = gatewayProbe?.ok === true;
+    const gatewayReachable = gatewayProbe?.ok === true || gatewayProbe?.connectLatencyMs != null;
     const gatewaySelf = pickGatewaySelfPresence(gatewayProbe?.presence ?? null);
     progress.tick();
 

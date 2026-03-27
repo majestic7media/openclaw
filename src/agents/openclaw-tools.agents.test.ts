@@ -1,6 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createPerSenderSessionConfig } from "./test-helpers/session-config.js";
 
+const mocks = vi.hoisted(() => ({
+  createMessageTool: vi.fn(() => ({
+    label: "Message",
+    name: "message",
+    description: "mock-message-tool",
+    parameters: {},
+    execute: vi.fn(),
+  })),
+}));
+
+vi.mock("@anthropic-ai/vertex-sdk", () => ({
+  AnthropicVertex: class AnthropicVertex {},
+}));
+
 let configOverride: ReturnType<(typeof import("../config/config.js"))["loadConfig"]> = {
   session: createPerSenderSessionConfig(),
 };
@@ -13,6 +27,10 @@ vi.mock("../config/config.js", async (importOriginal) => {
     resolveGatewayPort: () => 18789,
   };
 });
+
+vi.mock("./tools/message-tool.js", () => ({
+  createMessageTool: mocks.createMessageTool,
+}));
 
 import "./test-helpers/fast-core-tools.js";
 
@@ -129,5 +147,18 @@ describe("agents_list", () => {
     expect(agents?.map((agent) => agent.id)).toEqual(["main", "research"]);
     const research = agents?.find((agent) => agent.id === "research");
     expect(research?.configured).toBe(false);
+  });
+
+  it("passes agentTo through to the message tool", () => {
+    createOpenClawTools({
+      agentSessionKey: "main",
+      agentTo: "channel:parent-channel",
+    });
+
+    expect(mocks.createMessageTool).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentTo: "channel:parent-channel",
+      }),
+    );
   });
 });

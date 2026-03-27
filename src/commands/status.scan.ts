@@ -18,6 +18,7 @@ import { runExec } from "../process/exec.js";
 import type { RuntimeEnv } from "../runtime.js";
 import { createLazyRuntimeSurface } from "../shared/lazy-runtime.js";
 import type { buildChannelsTable as buildChannelsTableFn } from "./status-all/channels.js";
+import { GATEWAY_CLIENT_MODES } from "../utils/message-channel.js";
 import { getAgentLocalStatuses } from "./status.agent-local.js";
 import { buildColdStartUpdateResult, scanStatusJsonCore } from "./status.scan.json-core.js";
 import {
@@ -70,9 +71,17 @@ function isMissingConfigColdStart(): boolean {
 async function resolveChannelsStatus(params: {
   cfg: OpenClawConfig;
   gatewayReachable: boolean;
+  gatewayProbeAuth?: {
+    token?: string;
+    password?: string;
+  };
   opts: { timeoutMs?: number; all?: boolean };
 }) {
-  if (!params.gatewayReachable) {
+  if (!params.gatewayReachable || !params.opts.all) {
+    return null;
+  }
+  const gatewayProbeAuth = params.gatewayProbeAuth;
+  if (!gatewayProbeAuth?.token && !gatewayProbeAuth?.password) {
     return null;
   }
   return await callGateway({
@@ -83,6 +92,10 @@ async function resolveChannelsStatus(params: {
       timeoutMs: Math.min(8000, params.opts.timeoutMs ?? 10_000),
     },
     timeoutMs: Math.min(params.opts.all ? 5000 : 2500, params.opts.timeoutMs ?? 10_000),
+    token: gatewayProbeAuth.token,
+    password: gatewayProbeAuth.password,
+    clientName: "openclaw-probe",
+    mode: GATEWAY_CLIENT_MODES.PROBE,
   }).catch(() => null);
 }
 
@@ -133,6 +146,7 @@ async function resolveMemoryStatusSnapshot(params: {
 async function scanStatusJsonFast(opts: {
   timeoutMs?: number;
   all?: boolean;
+  deep?: boolean;
   runtime: RuntimeEnv;
 }): Promise<StatusScanResult> {
   const coldStart = isMissingConfigColdStart();
@@ -163,6 +177,7 @@ export async function scanStatus(
     json?: boolean;
     timeoutMs?: number;
     all?: boolean;
+    deep?: boolean;
   },
   _runtime: RuntimeEnv,
 ): Promise<StatusScanResult> {
@@ -170,6 +185,7 @@ export async function scanStatus(
     return await scanStatusJsonFast({
       timeoutMs: opts.timeoutMs,
       all: opts.all,
+      deep: opts.deep,
       runtime: _runtime,
     });
   }
@@ -252,14 +268,19 @@ export async function scanStatus(
           ...(skipColdStartNetworkChecks ? { skipProbe: true } : {}),
         },
       });
-      const gatewayReachable = gatewayProbe?.ok === true;
+      const gatewayReachable = gatewayProbe?.ok === true || gatewayProbe?.connectLatencyMs != null;
       const gatewaySelf = gatewayProbe?.presence
         ? pickGatewaySelfPresence(gatewayProbe.presence)
         : null;
       progress.tick();
 
       progress.setLabel("Querying channel status…");
-      const channelsStatus = await resolveChannelsStatus({ cfg, gatewayReachable, opts });
+      const channelsStatus = await resolveChannelsStatus({
+        cfg,
+        gatewayReachable,
+        gatewayProbeAuth,
+        opts,
+      });
       const { collectChannelStatusIssues, buildChannelsTable } =
         await loadStatusScanRuntimeModule();
       const channelIssues = channelsStatus ? collectChannelStatusIssues(channelsStatus) : [];

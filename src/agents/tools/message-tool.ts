@@ -397,6 +397,7 @@ type MessageToolOptions = {
   resolveCommandSecretRefsViaGateway?: typeof resolveCommandSecretRefsViaGateway;
   runMessageAction?: typeof runMessageAction;
   currentChannelId?: string;
+  agentTo?: string;
   currentChannelProvider?: string;
   currentThreadTs?: string;
   currentMessageId?: string | number;
@@ -642,11 +643,12 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
         config: options?.config,
       })
     : undefined;
+  const currentChannelId = options?.currentChannelId ?? options?.agentTo;
   const schema = options?.config
     ? buildMessageToolSchema({
         cfg: options.config,
         currentChannelProvider: options.currentChannelProvider,
-        currentChannelId: options.currentChannelId,
+        currentChannelId,
         currentThreadTs: options.currentThreadTs,
         currentMessageId: options.currentMessageId,
         currentAccountId: agentAccountId,
@@ -659,7 +661,7 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
   const description = buildMessageToolDescription({
     config: options?.config,
     currentChannel: options?.currentChannelProvider,
-    currentChannelId: options?.currentChannelId,
+    currentChannelId,
     currentThreadTs: options?.currentThreadTs,
     currentMessageId: options?.currentMessageId,
     currentAccountId: agentAccountId,
@@ -759,16 +761,17 @@ export function createMessageTool(options?: MessageToolOptions): AnyAgentTool {
         typeof options?.currentMessageId === "number" ||
         (typeof options?.currentMessageId === "string" &&
           options.currentMessageId.trim().length > 0);
+      const currentChannelId = options?.currentChannelId ?? options?.agentTo;
 
       const toolContext =
-        options?.currentChannelId ||
+        currentChannelId ||
         options?.currentChannelProvider ||
         options?.currentThreadTs ||
         hasCurrentMessageId ||
         options?.replyToMode ||
         options?.hasRepliedRef
           ? {
-              currentChannelId: options?.currentChannelId,
+              currentChannelId,
               currentChannelProvider: options?.currentChannelProvider,
               currentThreadTs: options?.currentThreadTs,
               currentMessageId: options?.currentMessageId,

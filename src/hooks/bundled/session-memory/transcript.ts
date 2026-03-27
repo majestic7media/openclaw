@@ -1,6 +1,22 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { stripInboundMetadata } from "../../../auto-reply/reply/strip-inbound-meta.js";
 import { hasInterSessionUserProvenance } from "../../../sessions/input-provenance.js";
+import { stripAssistantInternalScaffolding } from "../../../shared/text/assistant-visible-text.js";
+
+const SESSION_RESET_PROMPT_SENTINEL = "A new session was started via /new or /reset.";
+
+function sanitizeSessionMemoryText(role: string, text: string): string {
+  const stripped =
+    role === "assistant"
+      ? stripAssistantInternalScaffolding(text)
+      : stripAssistantInternalScaffolding(stripInboundMetadata(text)).trim();
+  const trimmed = stripped.trim();
+  if (trimmed.startsWith(SESSION_RESET_PROMPT_SENTINEL)) {
+    return "";
+  }
+  return role === "assistant" ? stripped.trim() : trimmed;
+}
 
 export async function getRecentSessionContent(
   sessionFilePath: string,
@@ -25,8 +41,10 @@ export async function getRecentSessionContent(
               ? // oxlint-disable-next-line typescript/no-explicit-any
                 msg.content.find((c: any) => c.type === "text")?.text
               : msg.content;
-            if (text && !text.startsWith("/")) {
-              allMessages.push(`${role}: ${text}`);
+            const sanitizedText =
+              typeof text === "string" ? sanitizeSessionMemoryText(role, text) : "";
+            if (sanitizedText && !sanitizedText.startsWith("/")) {
+              allMessages.push(`${role}: ${sanitizedText}`);
             }
           }
         }

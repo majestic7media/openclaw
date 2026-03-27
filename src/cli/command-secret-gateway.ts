@@ -567,6 +567,8 @@ export async function resolveCommandSecretRefsViaGateway(params: {
   allowedPaths?: ReadonlySet<string>;
 }): Promise<ResolveCommandSecretsResult> {
   const mode = normalizeCommandSecretResolutionMode(params.mode);
+  const gatewayMode =
+    mode === "read_only_status" ? GATEWAY_CLIENT_MODES.PROBE : GATEWAY_CLIENT_MODES.CLI;
   const configuredTargetRefPaths = collectConfiguredTargetRefPaths({
     config: params.config,
     targetIds: params.targetIds,
@@ -605,7 +607,7 @@ export async function resolveCommandSecretRefsViaGateway(params: {
       },
       timeoutMs: 30_000,
       clientName: GATEWAY_CLIENT_NAMES.CLI,
-      mode: GATEWAY_CLIENT_MODES.CLI,
+      mode: gatewayMode,
     });
   } catch (err) {
     try {
