@@ -646,7 +646,7 @@ describe("QmdMemoryManager", () => {
     const { manager } = await createManager({ mode: "full" });
     await manager.close();
 
-    expect(logWarnMock).toHaveBeenCalledWith(
+    expect(logDebugMock).toHaveBeenCalledWith(
       expect.stringContaining("qmd collection add skipped for workspace-main"),
     );
   });
